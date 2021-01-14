@@ -7,33 +7,29 @@ Helpers for embarrassingly parallel code.
 
 from __future__ import division
 
-import os
-import sys
-from math import sqrt
 import functools
-import time
-import threading
 import itertools
-from uuid import uuid4
-from numbers import Integral
-import warnings
+import os
 import queue
+import sys
+import threading
+import time
+import warnings
+from math import sqrt
+from numbers import Integral
+from uuid import uuid4
 
 from ._multiprocessing_helpers import mp
-
-from .logger import Logger, short_format_time
-from .disk import memstr_to_bytes
-from ._parallel_backends import (FallbackToBackend, MultiprocessingBackend,
-                                 ThreadingBackend, SequentialBackend,
-                                 LokyBackend)
-from .externals.cloudpickle import dumps, loads
-from .externals import loky
-
 # Make sure that those two classes are part of the public joblib.parallel API
 # so that 3rd party backend implementers can import them from here.
 from ._parallel_backends import AutoBatchingMixin  # noqa
+from ._parallel_backends import (FallbackToBackend, MultiprocessingBackend,
+                                 ThreadingBackend, SequentialBackend,
+                                 LokyBackend)
 from ._parallel_backends import ParallelBackendBase  # noqa
-
+from .disk import memstr_to_bytes
+from .externals import loky
+from .logger import Logger, short_format_time
 
 BACKENDS = {
     'multiprocessing': MultiprocessingBackend,
@@ -181,6 +177,7 @@ class parallel_backend(object):
     .. versionadded:: 0.10
 
     """
+
     def __init__(self, backend, n_jobs=-1, inner_max_num_threads=None,
                  **backend_params):
         if isinstance(backend, str):
@@ -323,6 +320,7 @@ def delayed(function):
 
     def delayed_function(*args, **kwargs):
         return function, args, kwargs
+
     try:
         delayed_function = functools.wraps(function)(delayed_function)
     except AttributeError:
@@ -342,6 +340,7 @@ class BatchCompletionCallBack(object):
     processed.
 
     """
+
     def __init__(self, dispatch_timestamp, batch_size, parallel):
         self.dispatch_timestamp = dispatch_timestamp
         self.batch_size = batch_size
@@ -634,6 +633,7 @@ class Parallel(Logger):
         [Parallel(n_jobs=2)]: Done 6 out of 6 | elapsed:  0.0s finished
 
     '''
+
     def __init__(self, n_jobs=None, backend=None, verbose=0, timeout=None,
                  pre_dispatch='2 * n_jobs', batch_size='auto',
                  temp_folder=None, max_nbytes='1M', mmap_mode='r',
@@ -890,7 +890,7 @@ class Parallel(Logger):
                 return
             self._print('Done %3i tasks      | elapsed: %s',
                         (self.n_completed_tasks,
-                         short_format_time(elapsed_time), ))
+                         short_format_time(elapsed_time),))
         else:
             index = self.n_completed_tasks
             # We are finished dispatching
@@ -915,12 +915,13 @@ class Parallel(Logger):
                          short_format_time(remaining_time),
                          ))
 
-    def retrieve(self):
+    def retrieve(self, break_func):
         self._output = list()
+        start_time = time.time()
         while self._iterating or len(self._jobs) > 0:
             if len(self._jobs) == 0:
                 # Wait for an async callback to dispatch new jobs
-                time.sleep(0.01)
+                time.sleep(0.001)
                 continue
             # We need to be careful: the job list can be filling up as
             # we empty it and Python list are not thread-safe by default hence
@@ -934,6 +935,8 @@ class Parallel(Logger):
                 else:
                     self._output.extend(job.get())
 
+                if callable(break_func) and not break_func(self._output, start_time):
+                    break
             except BaseException as exception:
                 # Note: we catch any BaseException instead of just Exception
                 # instances to also include KeyboardInterrupt.
@@ -955,7 +958,7 @@ class Parallel(Logger):
                     backend.abort_everything(ensure_ready=ensure_ready)
                 raise
 
-    def __call__(self, iterable):
+    def __call__(self, iterable, break_func):
         if self._jobs:
             raise ValueError('This Parallel instance is already running')
         # A flag used to abort the dispatching of jobs in case an
@@ -986,6 +989,7 @@ class Parallel(Logger):
                 self._backend._workers._temp_folder_manager.set_current_context(  # noqa
                     self._id
                 )
+
             self._reducer_callback = _batched_calls_reducer_callback
 
         # self._effective_n_jobs should be called in the Parallel.__call__
@@ -1051,7 +1055,7 @@ class Parallel(Logger):
                 self._iterating = False
 
             with self._backend.retrieval_context():
-                self.retrieve()
+                self.retrieve(break_func)
             # Make sure that we get a last message telling us we are done
             elapsed_time = time.time() - self._start_time
             self._print('Done %3i out of %3i | elapsed: %s finished',
