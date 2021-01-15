@@ -484,8 +484,19 @@ class LokyBackend(AutoBatchingMixin, ParallelBackendBase):
     supports_inner_max_num_threads = True
 
     def configure(self, n_jobs=1, parallel=None, prefer=None, require=None,
-                  idle_worker_timeout=300, **memmappingexecutor_args):
-        """Build a process executor and return the number of workers"""
+                  idle_worker_timeout=2100000, **memmappingexecutor_args):
+        """
+
+        :param n_jobs:
+        :param parallel:
+        :param prefer:
+        :param require:
+        :param idle_worker_timeout: joky worker进程超时时间 现在改为 210万秒,约24天;因为每次创建worker是在用户的请求中,
+                                    所以尽量超时频率降到最低,也降低了接口 不稳定的频率;
+                                    注意:可能不同系统 最大超时时间不同,如果运行时报错 BrokenProcessPool,则修改 超时时间
+        :param memmappingexecutor_args:
+        :return:
+        """
         n_jobs = self.effective_n_jobs(n_jobs)
         if n_jobs == 1:
             raise FallbackToBackend(
