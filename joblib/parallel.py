@@ -915,7 +915,7 @@ class Parallel(Logger):
                          short_format_time(remaining_time),
                          ))
 
-    def retrieve(self, break_func):
+    def retrieve(self, break_func=None):
         self._output = list()
         start_time = time.time()
         while self._iterating or len(self._jobs) > 0:
@@ -958,7 +958,7 @@ class Parallel(Logger):
                     backend.abort_everything(ensure_ready=ensure_ready)
                 raise
 
-    def __call__(self, iterable, break_func):
+    def __call__(self, iterable, break_func=None):
         if self._jobs:
             raise ValueError('This Parallel instance is already running')
         # A flag used to abort the dispatching of jobs in case an
