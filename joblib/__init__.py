@@ -106,33 +106,30 @@ Main features
 # Dev branch marker is: 'X.Y.dev' or 'X.Y.devN' where N is an integer.
 # 'X.Y.dev0' is the canonical version of 'X.Y.dev'
 #
-__version__ = '1.1.3'
-
+__version__ = '1.1.5'
 
 import os
-from .memory import Memory, MemorizedResult, register_store_backend
-from .logger import PrintTime
-from .logger import Logger
+
+from .compressor import register_compressor
+from .externals.loky import wrap_non_picklable_objects
 from .hashing import hash
+from .logger import Logger
+from .logger import PrintTime
+from .memory import Memory, MemorizedResult, register_store_backend
 from .numpy_pickle import dump
 from .numpy_pickle import load
-from .compressor import register_compressor
 from .parallel import Parallel
-from .parallel import delayed
 from .parallel import cpu_count
-from .parallel import register_parallel_backend
-from .parallel import parallel_backend
+from .parallel import delayed
 from .parallel import effective_n_jobs
-
-from .externals.loky import wrap_non_picklable_objects
-
+from .parallel import parallel_backend
+from .parallel import register_parallel_backend
 
 __all__ = ['Memory', 'MemorizedResult', 'PrintTime', 'Logger', 'hash', 'dump',
            'load', 'Parallel', 'delayed', 'cpu_count', 'effective_n_jobs',
            'register_parallel_backend', 'parallel_backend',
            'register_store_backend', 'register_compressor',
            'wrap_non_picklable_objects']
-
 
 # Workaround issue discovered in intel-openmp 2019.5:
 # https://github.com/ContinuumIO/anaconda-issues/issues/11294
